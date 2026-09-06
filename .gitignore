@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+reports/
+build_pe_fixture.__pycache__/
+tests/__pycache__/
+firmware/__pycache__/
+temp/
