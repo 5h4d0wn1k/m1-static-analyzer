@@ -3,61 +3,57 @@
 > or hold explicit written authorization to assess**. Unauthorized use is
 > prohibited and may be illegal. Read [ETHICS.md](ETHICS.md) and
 > [SCOPE.md](SCOPE.md) before use. Use at your own risk; **AS IS**, no warranty.
+
 # M1 — Static Analyzer
 
-Hand-written ELF / PE structural parser for malware research and
-reverse-engineering education.
+Dependency-free static malware analysis and reverse-engineering research tool that parses
+**ELF (32/64) and PE (PE32/PE32+)** files by hand — headers, sections, symbols, imports, exports,
+strings, and entropy — to extract indicators from samples you are authorized to analyze.
 
-## What genuinely works
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![GitHub stars](https://img.shields.io/github/stars/5h4d0wn1k/m1-static-analyzer)
+![GitHub last commit](https://img.shields.io/github/last-commit/5h4d0wn1k/m1-static-analyzer)
+![GitHub issues](https://img.shields.io/github/issues/5h4d0wn1k/m1-static-analyzer)
 
-Parses **REAL file formats** with its own pure-Python parsers (no `pefile`,
-`pyelftools`, or `python-magic` dependencies):
+## Why
 
-- **ELF 32/64** — magic, ELF header (type/machine/entry), section headers,
-  section entropy, symbol tables (`.symtab`/`.dynsym`), and **dynamic imports**
-  recovered from GOT/PLT relocation entries (`.rela.plt`/`.rel.plt`, `GLOB_DAT`,
-  `JUMP_SLOT`, `COPY`) plus unresolved `.dynsym` function symbols.
-- **PE (MZ → COFF → Optional → sections → import/export)** — DOS header,
-  COFF header (machine, sections, characteristics), Optional header
-  (PE32/PE32+, image base, entry point, subsystem), section headers with
-  flags + entropy, **import table** (per-DLL function lists via RVA→offset
-  mapping) and **export table**.
-- **Strings**, **Shannon entropy**, **packer hints** (UPX, Themida, VMProtect,
-  ASPack, PECompact, …), and **dangerous API** detection correlated against
-  the parsed import table.
+Malware analysis starts long before execution: statically examining a suspicious binary’s file
+format reveals the imports, sections, and entropy that power triage and attribution. This project is
+an educational implementation of real format parsing — no `pefile`, no `pyelftools`, just Python’s
+standard library and the ELF/PE specs. Analysts and students studying reverse engineering can trace
+how ELF relocations become dynamic imports and how a PE import table maps RVAs to offsets. It is a
+malware-research and malware-analysis learning instrument, and it is authorized use only: analyze
+files you own or hold written permission to inspect.
 
-## Real fixtures shipped
+## Features
 
-| Fixture | What it is |
-|---------|-----------|
-| `fixtures/hello_elf` | Real ELF64 executable compiled with `gcc` (calls `printf`, `strncpy`) |
-| `fixtures/sample_pe32.exe` | Handcrafted but spec-valid PE32 image with a KERNEL32.dll import table (`CreateFileA`, `LoadLibraryA`) |
+- **ELF 32/64 parsing** — header (type/machine/entry), sections with entropy, `.symtab`/`.dynsym`,
+  and dynamic imports recovered from `.rela.plt` / `.rel.plt`, `GLOB_DAT`, `JUMP_SLOT`, `COPY`.
+- **PE parsing (MZ → COFF → Optional)** — PE32/PE32+, image base, entry point, subsystem, section
+  flags + entropy, per-DLL import tables, and exports.
+- **Indicators** — ASCII strings, per-section Shannon entropy, packer hints (UPX, Themida, VMProtect,
+  ASPack, PECompact…), and dangerous-API detection correlated against the parsed import table.
+- **JSON + Markdown reports** — `--output FILE` writes JSON; `--markdown` also emits a text report.
+- **Ships real fixtures** — a gcc-built ELF64 binary and a handcrafted spec-valid PE32 image
+  (built byte-by-byte by `firmware/build_pe_fixture.py`).
 
-The bare-metal PE fixture is built byte-by-byte per the MS PE/COFF spec by
-`firmware/build_pe_fixture.py`.
+## Quickstart
 
-## Usage
+Prerequisite: Python 3 (standard library only).
 
 ```bash
-# Help
 python3 firmware/static_analyzer.py --help
-
-# Analyze a real ELF (compiled sample)
 python3 firmware/static_analyzer.py -f fixtures/hello_elf
-
-# Analyze the handcrafted PE and dump JSON
 python3 firmware/static_analyzer.py -f fixtures/sample_pe32.exe -o reports/sample.json
-
-# Also emit Markdown
 python3 firmware/static_analyzer.py -f fixtures/hello_elf --markdown -o reports/hello.json
 ```
 
-### Offline demo (exits 0)
+## Examples
 
-```bash
-python3 firmware/static_analyzer.py -f fixtures/hello_elf -o reports/hello.json
-python3 firmware/static_analyzer.py -f fixtures/sample_pe32.exe -o reports/sample.json
-```
+Real samples shipped with the repo:
+
+- `fixtures/hello_elf` — ELF64 executable compiled with `gcc` (calls `printf`, `strncpy`).
+- `fixtures/sample_pe32.exe` — spec-valid PE32 image importing `CreateFileA` and `LoadLibraryA`.
 
 ## Tests
 
@@ -65,36 +61,24 @@ python3 firmware/static_analyzer.py -f fixtures/sample_pe32.exe -o reports/sampl
 python3 -m unittest discover -s tests -v
 ```
 
-Runs fully offline against the shipped fixtures and a PE built on the fly in a
-temp dir.
+Runs fully offline against the shipped fixtures plus a PE image built on the fly.
 
-## Live Lab Test Plan
+## Project structure
 
-1. In an isolated VM/container run the offline demo; confirm exit code 0 and
-   that JSON lists real ELF sections/imports and PE imports.
-2. Point the tool at a genuine unknown sample you own or have authorization to
-   analyze; confirm the parser identifies ELF vs PE and reports sections,
-   entropy, imports, packer hints.
-3. Cross-check imports against `objdump -p` (ELF) / any PE viewer; entries
-   should agree.
-4. Only ever analyze files you own or have explicit written authorization for.
+- `firmware/` — `static_analyzer.py` (analyzer) and `build_pe_fixture.py` (fixture builder).
+- `fixtures/` — real ELF and PE samples for the demos and tests.
+- `tests/` — stdlib unittest suite.
 
-## Metrics
+## Documentation
 
-- Format parser: ELF32/ELF64 + PE32/PE32+ headers, sections, symbols,
-  relocations/imports, exports.
-- Test count: 13 stdlib unittest cases (see `tests/`).
-- Dependencies: Python 3 stdlib only (`struct`, `hashlib`, `math`, `json`,
-  `argparse`).
-- Offline demo verifies both a real gcc-compiled ELF and a handcrafted PE.
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [ETHICS.md](ETHICS.md) · [SCOPE.md](SCOPE.md)
 
-## IMPORTANT: Read before use.
+## Contributing
 
-This tool is for **educational and authorized analysis only**. You MUST have
-explicit written permission to analyze any file. Only analyze files you own or
-are authorized to inspect. Unauthorized analysis of malware or software may
-violate computer-crime laws. The author is not responsible for misuse.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Keep the parser dependency-free and the legal gates intact.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).
